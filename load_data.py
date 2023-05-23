@@ -50,3 +50,17 @@ class OralCancerDataset(Dataset):
                 image = self.transform(image)
 
             return image, name
+        
+class CombinedDataset(Dataset):
+    def __init__(self, dataset1, dataset2):
+        self.dataset1 = dataset1
+        self.dataset2 = dataset2
+
+        # Assert the two datasets have the same length
+        assert len(self.dataset1) == len(self.dataset2)
+
+    def __getitem__(self, index):
+        return self.dataset1[index], self.dataset2[index]
+
+    def __len__(self):
+        return len(self.dataset1)
