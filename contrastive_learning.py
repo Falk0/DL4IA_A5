@@ -13,6 +13,9 @@ from torch.utils.data import Dataset
 import glob
 import pandas as pd
 import os
+import torchvision.models as models
+from pytorch_metric_learning import losses
+
 
 class CLOralCancerDataset(Dataset):
     """__init__ and __len__ functions are the same as in TorchvisionDataset"""
@@ -180,6 +183,10 @@ train_dataloader = DataLoader(train,
     shuffle=False)
 
 # Load the pre-trained EfficientNet model
+resnet50 = models.resnet50(pretrained=True)
+resnet50 = nn.Sequential(*list(resnet50.children())[:-2]) 
+
+
 model_name = 'efficientnet-b0'
 base_model = EfficientNet.from_pretrained(model_name)
 
