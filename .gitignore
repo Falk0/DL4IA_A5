@@ -129,6 +129,8 @@ ENV/
 env.bak/
 venv.bak/
 
+cancer-classification-challenge-2023
+
 # Spyder project settings
 .spyderproject
 .spyproject
