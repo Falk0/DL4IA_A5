@@ -1,7 +1,7 @@
 #loss functions and traning script originally by:
 #https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/tutorial17/SimCLR.html
 #Customized the dataloader and transformation classes to get it to run on Windows machine
-
+#
 
 ## Standard libraries
 import os
@@ -9,20 +9,18 @@ from copy import deepcopy
 
 ## Imports for plotting
 import matplotlib.pyplot as plt
-plt.set_cmap('cividis')
-
+#plt.set_cmap('cividis')
 from IPython.display import set_matplotlib_formats
 
 ## Imports for plotting
-import matplotlib.pyplot as plt
-plt.set_cmap('cividis')
-
-from IPython.display import set_matplotlib_formats
-set_matplotlib_formats('svg', 'pdf') # For export
-import matplotlib
-matplotlib.rcParams['lines.linewidth'] = 2.0
-import seaborn as sns
-sns.set()
+#import matplotlib.pyplot as plt
+#plt.set_cmap('cividis')
+#from IPython.display import set_matplotlib_formats
+#set_matplotlib_formats('svg', 'pdf') # For export
+#import matplotlib
+#matplotlib.rcParams['lines.linewidth'] = 2.0
+#import seaborn as sns
+#sns.set()
 
 ## tqdm for loading bars
 from tqdm.notebook import tqdm
@@ -37,15 +35,15 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
 import glob
-import pandas as pd
-from sklearn.metrics import roc_auc_score, f1_score
+#import pandas as pd
+#from sklearn.metrics import roc_auc_score, f1_score
 
 import CustomImageDataset as CID
 import ContrastiveTransformations as CT
 
 ## Torchvision
 import torchvision
-from torchvision.datasets import STL10
+#from torchvision.datasets import STL10
 from torchvision import transforms
 
 # PyTorch Lightning
@@ -66,9 +64,9 @@ import os.path
 #%load_ext tensorboard
 
 # Path to the folder where the datasets are/should be downloaded (e.g. CIFAR10)
-DATASET_PATH = "C:/Users/linus/python_projects/deep_learning_for_image_analysis/data"
+DATASET_PATH = "/home/linus/dev/DL4IA_A5/data"
 # Path to the folder where the pretrained models are saved
-CHECKPOINT_PATH = "C:/Users/linus/python_projects/deep_learning_for_image_analysis/saved_models/tutorial17"
+CHECKPOINT_PATH = "/home/linus/dev/DL4IA_A5/saved_models"
 # In this notebook, we use data loaders with heavier computational processing. It is recommended to use as many
 # workers as possible in a data loader, which corresponds to the number of CPU cores
 NUM_WORKERS = os.cpu_count()
@@ -179,7 +177,8 @@ class SimCLR(pl.LightningModule):
         
     def training_step(self, batch, batch_idx):
         return self.info_nce_loss(batch, mode='train')
-        
+
+ 
     def validation_step(self, batch, batch_idx):
         self.info_nce_loss(batch, mode='val')
 
@@ -189,7 +188,7 @@ def train_simclr(batch_size, max_epochs=150, **kwargs):
                          accelerator="gpu" if str(device).startswith("cuda") else "cpu",
                          devices=1,
                          max_epochs=max_epochs,
-                         callbacks=[ModelCheckpoint(save_weights_only=True, mode='max', monitor='val_acc_top5'),
+                         callbacks=[ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
                                     LearningRateMonitor('epoch')])
     trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
 
@@ -210,15 +209,15 @@ simclr_model = train_simclr(batch_size=128,
                             lr=5e-4, 
                             temperature=0.07, 
                             weight_decay=1e-4, 
-                            max_epochs=150)
+                            max_epochs=3)
 
 
 
 
 
-img_transforms = transforms.Compose([
-                                    transforms.ToTensor()
-                                     ])
+#img_transforms = transforms.Compose([
+#                                    transforms.ToTensor()
+#                                     ])
 
 
 def prepare_network(model):
@@ -226,7 +225,7 @@ def prepare_network(model):
     network = deepcopy(model.convnet)
     network.fc = nn.Identity()  # Removing projection head g(.)
     network.fc = nn.Linear(2048, 2)
-    torch.save(network, f'C:/Users/linus/python_projects/deep_learning_for_image_analysis/data/CL_pretrained_model_3.pt')
+    torch.save(network, f'/home/linus/dev/CL_pretrained_model.pt')
     network.eval()
     network.to(device)
     
