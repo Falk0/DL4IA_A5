@@ -1,26 +1,13 @@
 #loss functions and traning script originally by:
 #https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/tutorial17/SimCLR.html
-#Customized the dataloader and transformation classes to get it to run on Windows machine
-#
 
 ## Standard libraries
 import os
 from copy import deepcopy
 
-## Imports for plotting
+## Imports for plot
 import matplotlib.pyplot as plt
-#plt.set_cmap('cividis')
 from IPython.display import set_matplotlib_formats
-
-## Imports for plotting
-#import matplotlib.pyplot as plt
-#plt.set_cmap('cividis')
-#from IPython.display import set_matplotlib_formats
-#set_matplotlib_formats('svg', 'pdf') # For export
-#import matplotlib
-#matplotlib.rcParams['lines.linewidth'] = 2.0
-#import seaborn as sns
-#sns.set()
 
 ## tqdm for loading bars
 from tqdm.notebook import tqdm
@@ -35,15 +22,12 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
 import glob
-#import pandas as pd
-#from sklearn.metrics import roc_auc_score, f1_score
 
 import CustomImageDataset as CID
 import ContrastiveTransformations as CT
 
 ## Torchvision
 import torchvision
-#from torchvision.datasets import STL10
 from torchvision import transforms
 
 # PyTorch Lightning
@@ -65,8 +49,14 @@ import os.path
 
 # Path to the folder where the datasets are/should be downloaded (e.g. CIFAR10)
 DATASET_PATH = "/home/linus/dev/DL4IA_A5/data"
+VAL_DATASET_PATH = "/home/linus/dev/DL4IA_A5/data"
+
+NUM_EPOCHS = 6
+
 # Path to the folder where the pretrained models are saved
 CHECKPOINT_PATH = "/home/linus/dev/DL4IA_A5/saved_models"
+
+FINISHED_MODEL_PATH = "/home/linus/dev/DL4IA_A5/CL_pretrained_model.pt"
 # In this notebook, we use data loaders with heavier computational processing. It is recommended to use as many
 # workers as possible in a data loader, which corresponds to the number of CPU cores
 NUM_WORKERS = os.cpu_count()
@@ -99,7 +89,7 @@ contrast_transforms = transforms.Compose([
 
 unlabeled_data = CID.CustomImageDataset(root=DATASET_PATH, split='unlabeled',  
                        transform=CT.ContrastiveTransformations(contrast_transforms, n_views=2))
-train_data_contrast = CID.CustomImageDataset(root=DATASET_PATH, split='train', 
+unlabeled_val_data = CID.CustomImageDataset(root=DATASET_PATH, split='unlabeled', 
                             transform=CT.ContrastiveTransformations(contrast_transforms, n_views=2))
 
 
@@ -188,13 +178,13 @@ def train_simclr(batch_size, max_epochs=150, **kwargs):
                          accelerator="gpu" if str(device).startswith("cuda") else "cpu",
                          devices=1,
                          max_epochs=max_epochs,
-                         callbacks=[ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
+                         callbacks=[ModelCheckpoint(save_weights_only=True, mode='min', monitor='val_acc_top5'),
                                     LearningRateMonitor('epoch')])
     trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
 
     train_loader = data.DataLoader(unlabeled_data, batch_size=batch_size, shuffle=True, 
                                        drop_last=True, pin_memory=True, num_workers=NUM_WORKERS)
-    val_loader = data.DataLoader(train_data_contrast, batch_size=batch_size, shuffle=False, 
+    val_loader = data.DataLoader(unlabeled_val_data , batch_size=batch_size, shuffle=False, 
                                      drop_last=False, pin_memory=True, num_workers=NUM_WORKERS)
     pl.seed_everything(42) # To be reproducable
     model = SimCLR(max_epochs=max_epochs, **kwargs)
@@ -204,20 +194,18 @@ def train_simclr(batch_size, max_epochs=150, **kwargs):
     return model
 
 
+
+
+#Start pretraining
 simclr_model = train_simclr(batch_size=128, 
                             hidden_dim=128, 
                             lr=5e-4, 
                             temperature=0.07, 
                             weight_decay=1e-4, 
-                            max_epochs=3)
+                            max_epochs=NUM_EPOCHS)
 
 
 
-
-
-#img_transforms = transforms.Compose([
-#                                    transforms.ToTensor()
-#                                     ])
 
 
 def prepare_network(model):
@@ -225,12 +213,12 @@ def prepare_network(model):
     network = deepcopy(model.convnet)
     network.fc = nn.Identity()  # Removing projection head g(.)
     network.fc = nn.Linear(2048, 2)
-    torch.save(network, f'/home/linus/dev/CL_pretrained_model.pt')
+    torch.save(network, FINISHED_MODEL_PATH)
     network.eval()
     network.to(device)
     
     return network #data.TensorDataset(feats, labels)
 
-
+#Save model
 simclr_model = prepare_network(simclr_model)
 
